@@ -4,8 +4,6 @@ import jwt from "jsonwebtoken";
 import fs from "fs";
 import multer from "multer";
 
-// const { PDFDocument, StandardFonts, rgb, PDFName, sizeInBytes, degrees } = require('pdf-lib');
-// const fontkit = require('@pdf-lib/fontkit');
 import {
   PDFDocument,
   StandardFonts,
@@ -15,9 +13,6 @@ import {
   degrees,
 } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
-// import * as fontkit from '@btielen/pdf-lib-fontkit';
-// import * as fontkit from "@pdf-lib/fontkit";
-// const fontKit = require("@pdf-lib/fontkit");
 
 export const uploadApply = (req, res) => {
   const token = req.cookies.access_token;
@@ -91,7 +86,7 @@ export const getApplies = (req, res) => {
       // if (err) console.log(err);
       if (err) return res.status(500).json(err);
 
-      // console.log(data[0].type);
+      // console.log(data[0].cathedra_id);
       if (data[0].type === "Студент") {
         // get all applies of current user
         const query1 = `SELECT applies.id, certificates.type, certificates.year, applies.applied_at, applies.status FROM applies INNER JOIN certificates ON applies.certificate_id = certificates.id WHERE applies.user_id = ${userId} AND applies.course_id = ${subjectId}`;
@@ -107,6 +102,42 @@ export const getApplies = (req, res) => {
         INNER JOIN users ON applies.user_id = users.id
         INNER JOIN certificates ON applies.certificate_id = certificates.id
         WHERE applies.course_id = ${subjectId}`;
+
+        db.query(query1, (err, data1) => {
+          // if (err) console.log(err);
+          if (err) return res.status(500).json(err);
+
+          // console.log(data1);
+          return res.status(200).json(data1);
+        });
+      } else if (
+        data[0].type === "Адміністратор" ||
+        data[0].type === "Деканат"
+      ) {
+        const query1 = `SELECT applies.id, users.surname, users.name, users.potik, users.course_number, users.group_number, courses.course_name, specialties.specialty_name, cathedras.cathedra_name, certificates.type, certificates.year, applies.applied_at, applies.status, certificates.path
+        FROM applies
+        INNER JOIN users ON applies.user_id = users.id
+        INNER JOIN certificates ON applies.certificate_id = certificates.id
+        INNER JOIN courses ON courses.id = applies.course_id
+        INNER JOIN specialties ON specialties.specialty_id = users.specialty_id
+        INNER JOIN cathedras ON cathedras.cathedra_id = courses.cathedra_id`;
+
+        db.query(query1, (err, data1) => {
+          // if (err) console.log(err);
+          if (err) return res.status(500).json(err);
+
+          // console.log(data1);
+          return res.status(200).json(data1);
+        });
+      } else if (data[0].type === "Завідувач кафедри") {
+        const query1 = `SELECT applies.id, users.surname, users.name, users.potik, users.course_number, users.group_number, courses.course_name, specialties.specialty_name, cathedras.cathedra_name, certificates.type, certificates.year, applies.applied_at, applies.status, certificates.path
+        FROM applies
+        INNER JOIN users ON applies.user_id = users.id
+        INNER JOIN certificates ON applies.certificate_id = certificates.id
+        INNER JOIN courses ON courses.id = applies.course_id
+        INNER JOIN specialties ON specialties.specialty_id = users.specialty_id
+        INNER JOIN cathedras ON cathedras.cathedra_id = courses.cathedra_id
+        WHERE courses.cathedra_id = ${data[0].cathedra_id}`;
 
         db.query(query1, (err, data1) => {
           // if (err) console.log(err);
@@ -163,7 +194,6 @@ export const generateApplication = (req, res) => {
       if (err) return res.status(500).json(err);
 
       const applicationData = data[0];
-      // console.log(applicationData);
       const nameInitsialy = `${applicationData.surname} ${applicationData.name[0]}. ${applicationData.fathers_name[0]}.`;
       const todaysDate = new Date().toLocaleDateString();
 
@@ -179,9 +209,6 @@ export const generateApplication = (req, res) => {
       //Add font kit to the project
       pdfDoc.registerFontkit(fontkit);
 
-      // Embed the Helvetica font
-      // const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
-
       // Get the first page of the document
       const pages = pdfDoc.getPages();
       const firstPage = pages[0];
@@ -192,8 +219,8 @@ export const generateApplication = (req, res) => {
       // Add the font file content into the doc
       const cusFont = await pdfDoc.embedFont(customFont);
 
-      // Get the width and height of the first page
-      const { width, height } = firstPage.getSize();
+      // // Get the width and height of the first page
+      // const { width, height } = firstPage.getSize();
 
       // Draw a string of text diagonally across the first page
       firstPage.drawText(

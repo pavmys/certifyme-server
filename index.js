@@ -81,14 +81,20 @@ app.post("/api/upload-certificate", upload.single("file"), (req, res) => {
         let extractedText = data.text;
 
         const lines = extractedText.split("\n").map((line) => line.trim());
+        // console.log(lines);
 
-        const schoolsArr = ["DES 2022", "DATA ENGINEERING AND SECURITY 2023"];
+        const schoolsArr = [
+          "DES 2022",
+          "DATA ENGINEERING AND SECURITY 2023",
+          "DES-2024",
+        ];
 
         // Iterate through the textsArr and find the corresponding school for each text
         const schoolForTexts = lines.map((text) =>
           findSchoolForText(text, schoolsArr)
         );
         const schoolValue = schoolForTexts.filter((value) => value !== null)[0];
+        // console.log(schoolValue);
 
         // if certificate is "DES 2022"
         if (schoolValue === schoolsArr[0]) {
@@ -120,7 +126,7 @@ app.post("/api/upload-certificate", upload.single("file"), (req, res) => {
                   .replace(/^..\frontend\public/, "");
                 const certificatePath = filePathWithForwardSlash.slice(18);
 
-                const query = `INSERT INTO certificates(type, year, path, updated_at, user_id) VALUES ('${certificateType}', ${certificateYear}, '${certificatePath}', NOW(), ${userId})`;
+                const query = `INSERT INTO certificates(type, year, path, updated_at, user_id, active) VALUES ('${certificateType}', ${certificateYear}, '${certificatePath}', NOW(), ${userId}, 1)`;
 
                 db.query(query, (err, data) => {
                   if (err) return res.status(500).json(err);
@@ -170,7 +176,57 @@ app.post("/api/upload-certificate", upload.single("file"), (req, res) => {
                   .replace(/^..\frontend\public/, "");
                 const certificatePath = filePathWithForwardSlash.slice(18);
 
-                const query = `INSERT INTO certificates(type, year, path, updated_at, user_id) VALUES ('${certificateType}', ${certificateYear}, '${certificatePath}', NOW(), ${userId})`;
+                const query = `INSERT INTO certificates(type, year, path, updated_at, user_id, active) VALUES ('${certificateType}', ${certificateYear}, '${certificatePath}', NOW(), ${userId}, 1)`;
+
+                db.query(query, (err, data) => {
+                  if (err) return res.status(500).json(err);
+
+                  return res
+                    .status(200)
+                    .json({ message: "Сертифікат успішно завантажено" });
+                });
+              } else {
+                deleteFile(uploadedFilePath);
+                return res.status(422).json({
+                  error:
+                    "Це не Ваш сертифікат тому, що імена та прізвища не збігаються",
+                });
+              }
+            }
+          });
+        }
+        // if certificate is "DES-2024"
+        else if (schoolValue === schoolsArr[2]) {
+          const schoolSplit = lines[2].slice(3, 11).split("-");
+          const certificateType = schoolSplit[0];
+          const certificateYear = schoolSplit[1];
+
+          // check if user has already uploaded THIS certificate
+          const query1 = `SELECT * FROM certificates WHERE type = '${certificateType}' AND year = ${certificateYear} AND user_id = ${userId}`;
+          db.query(query1, (err, data1) => {
+            if (err) console.log(err);
+
+            if (data1.length > 0) {
+              deleteFile(uploadedFilePath);
+              return res
+                .status(422)
+                .json({ error: "Ви вже завантажували цей сертифікат" });
+            } else {
+              // check name of logged in user and name on certificate
+              const nameOnCertificate = lines[lines.length - 1]
+                .split(" ")
+                .reverse();
+
+              if (
+                nameOnCertificate[0] === userSurnameName[0] &&
+                nameOnCertificate[1] === userSurnameName[1]
+              ) {
+                const filePathWithForwardSlash = uploadedFilePath
+                  .replace(/\\/g, "/")
+                  .replace(/^..\frontend\public/, "");
+                const certificatePath = filePathWithForwardSlash.slice(18);
+
+                const query = `INSERT INTO certificates(type, year, path, updated_at, user_id, active) VALUES ('${certificateType}', ${certificateYear}, '${certificatePath}', NOW(), ${userId}, 1)`;
 
                 db.query(query, (err, data) => {
                   if (err) return res.status(500).json(err);

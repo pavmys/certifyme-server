@@ -2,8 +2,6 @@ import { db } from "../db.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-// export const getAllUsers = (req, res) => {};
-
 export const getUserInfo = (req, res) => {
   const token = req.cookies.access_token;
   if (!token) return res.status(401).json("Не автентифіковано!");
